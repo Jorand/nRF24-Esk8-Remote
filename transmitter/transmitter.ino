@@ -5,7 +5,7 @@
 #include "RF24.h"
 #include "VescUart.h"
 
-//#define DEBUG
+// #define DEBUG
 
 #ifdef DEBUG
   #define DEBUG_PRINT(x)  Serial.println (x)
@@ -100,13 +100,13 @@ String settingPages[numOfSettings][2] = {
 
 // Setting rules format: default, min, max.
 int settingRules[numOfSettings][3] {
-  {2, 0, 3},    // 0 Killswitch, 1 cruise & 2 data toggle
+  {0, 0, 3},    // 0 Killswitch, 1 cruise & 2 data toggle
   {0, 0, 1},    // 0 Li-ion & 1 LiPo
-  {12, 0, 12},
+  {10, 0, 12},
   {14, 0, 250},
   {15, 0, 250},
-  {32, 0, 250},
-  {80, 0, 250},
+  {40, 0, 250},
+  {83, 0, 250},
   {1, 0, 1},    // Yes or no
   {0, 0, 1023},
   {512, 0, 1023}, // 512 hallSensor, 450 joystick
@@ -122,9 +122,9 @@ struct remoteData remData;
 
 // Pin defination
 const byte triggerPin = 4;
-//const int chargeMeasurePin = A1; // (A1) Not used yet
-const int batteryMeasurePin = A2; // (A2)
-const int hallSensorPin = A3; // (A3) You can use joystick, juste change your min max center throttle value
+//const int chargeMeasurePin = A1; // Not used yet
+const int batteryMeasurePin = A2;
+const int hallSensorPin = A3; // You can use joystick, juste change your min max center throttle value
 
 // Battery monitering
 const float minVoltage = 3.2;
@@ -162,11 +162,8 @@ bool settingsLoopFlag = false;
 bool settingsChangeFlag = false;
 bool settingsChangeValueFlag = false;
 
-// Safe mode if remote is turned on with full throttle
-bool safeStart = true;
-
 void setup() {
-  //setDefaultEEPROMSettings(); // Call this function if you want to reset settings
+  // setDefaultEEPROMSettings(); // Call this function if you want to reset settings
   
   #ifdef DEBUG
     Serial.begin(9600);
@@ -185,12 +182,6 @@ void setup() {
   if (triggerActive()) {
     changeSettings = true;
     drawTitleScreen("Remote Settings");
-  }
-
-  // Check if throttle is not center activate safe mode
-  calculateThrottlePosition();
-  if (hallMeasurement > remoteSettings.centerHallValue + remoteSettings.deadzone) {
-    safeStart = false;
   }
 
   // Start radio communication
@@ -217,32 +208,22 @@ void loop() {
   }
   else
   {
-    // Re center joystick for unlock safe mode
-    if (!safeStart && hallMeasurement <= remoteSettings.centerHallValue + remoteSettings.deadzone + 10) {
-      safeStart = true;
-    }
-
-    if (safeStart) {
-      switch (remoteSettings.triggerMode) {
-        case 1:
-        case 2:
-        case 3:
-          throttle = throttle;
-          break;
-        default:
-          // Use throttle and trigger to drive motors
-          if (triggerActive()) {
-            throttle = throttle;
-          }
-          else {
-            // 127 is the middle position - no throttle and no brake/reverse
-            throttle = 127;
-          }
+    switch (remoteSettings.triggerMode) {
+      case 1:
+      case 2:
+      case 3:
+        throttle = throttle;
         break;
-      }
-    }
-    else {
-      throttle = 127;
+      default:
+        // Use throttle and trigger to drive motors
+        if (triggerActive()) {
+          throttle = throttle;
+        }
+        else {
+          // 127 is the middle position - no throttle and no brake/reverse
+          throttle = 127;
+        }
+      break;
     }
 
     // Transmit to receiver
@@ -465,7 +446,7 @@ void transmitToVesc() {
     while (radio.isAckPayloadAvailable()) {
       radio.read(&data, sizeof(data));
     }
-    
+
     if (sendSuccess == true)
     {
       // Transmission was a succes
@@ -503,7 +484,6 @@ void sendSettings() {
 }
 
 void calculateThrottlePosition() {
-
   // Hall sensor reading can be noisy, lets make an average reading.
   int total = 0;
   for (int i = 0; i < 10; i++) {

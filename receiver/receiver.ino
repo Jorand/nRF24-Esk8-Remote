@@ -4,7 +4,6 @@
 #include "RF24.h"
 #include "VescUart.h"
 
-// set true to use uart for sending throttle 
 struct vescValues {
   float ampHours;
   float inpVoltage;
@@ -19,7 +18,7 @@ struct remoteData { //   cmd    | settings
 };
 
 struct settings {
-  bool useUart;
+  bool useUart; // set true to use uart for sending throttle 
 };
 
 bool useUartDefault = false;
@@ -79,7 +78,7 @@ void loop() {
   // If transmission is available
   if (radio.available())
   {
-    int payloadSize = radio.getDynamicPayloadSize(); // get PayloadSize
+    //int payloadSize = radio.getDynamicPayloadSize(); // get PayloadSize
 
     // Read the actual message
     radio.read(&remData, sizeof(remData));
