@@ -24,7 +24,6 @@ struct settings {
 bool useUartDefault = false;
 
 RF24 radio(9, 10);
-int radioChannel = 108; // Above most WiFi frequencies
 const uint64_t pipe = 0xE8E8F0F0E1LL;
 
 bool recievedData = false;
@@ -51,7 +50,6 @@ void setup() {
   loadEEPROMSettings();
 
   radio.begin();
-  radio.setChannel(radioChannel);
   radio.enableAckPayload();
   radio.enableDynamicPayloads();
   radio.openReadingPipe(1, pipe);
@@ -61,7 +59,7 @@ void setup() {
   { 
     remPack.valXJoy         = 127; //middle Position 
     remPack.valYJoy         = 127; 
-    remPack.valLowerButton  = 0; 
+    remPack.valUpperButton  = 0; 
     remPack.valLowerButton  = 0; 
   } 
   else 
@@ -96,6 +94,7 @@ void loop() {
     switch (remData.packageType) {
       case 0:
         motorSpeed = remData.item1;
+        remPack.valLowerButton = remData.item2;
         radio.writeAckPayload(pipe, &data, sizeof(data));
         break;
       case 1:

@@ -9,7 +9,7 @@
 
 #ifdef DEBUG
   #define DEBUG_PRINT(x)  Serial.println (x)
-  //#include "printf.h"
+  #include "printf.h"
 #else
   #define DEBUG_PRINT(x)
 #endif
@@ -71,7 +71,6 @@ struct settings {
   int centerHallValue;
   int maxHallValue;
   int deadzone;
-  bool reverseThrottle;
 };
 
 // Defining variables for speed and distance calculation
@@ -80,7 +79,7 @@ float ratioRpmSpeed;
 float ratioPulseDistance;
 
 byte currentSetting = 0;
-const byte numOfSettings = 13;
+const byte numOfSettings = 12;
 
 String settingPages[numOfSettings][2] = {
   {"Trigger",         ""},
@@ -94,30 +93,27 @@ String settingPages[numOfSettings][2] = {
   {"Throttle min",    ""},
   {"Throttle center", ""},
   {"Throttle max",    ""},
-  {"Throttle deadzone",""},
-  {"throttle Reverse",""}
+  {"Throttle deadzone",""}
 };
 
 // Setting rules format: default, min, max.
 int settingRules[numOfSettings][3] {
-  {0, 0, 3},    // 0 Killswitch, 1 cruise & 2 data toggle
-  {0, 0, 1},    // 0 Li-ion & 1 LiPo
+  {0, 0, 3}, // 0 Killswitch, 1 cruise & 2 data toggle
+  {0, 0, 1}, // 0 Li-ion & 1 LiPo
   {10, 0, 12},
   {14, 0, 250},
   {15, 0, 250},
   {40, 0, 250},
   {83, 0, 250},
-  {1, 0, 1},    // Yes or no
+  {1, 0, 1}, // Yes or no
   {0, 0, 1023},
-  {512, 0, 1023}, // 512 hallSensor, 450 joystick
-  {1023, 0, 1023},// 1023 hallSensor, 900 joystick
-  {10, 0, 100},   // ex: 50 For joystick with big deadzone
-  {0, 0, 1}       // 1 Reverse Throttle input.
+  {512, 0, 1023},
+  {1023, 0, 1023},
+  {10, 0, 100}   // ex: 50 For joystick with big deadzone 
 };
 
 struct vescValues data;
 struct settings remoteSettings;
-
 struct remoteData remData;
 
 // Pin defination
@@ -134,7 +130,7 @@ const float refVoltage = 5.0; // Set to 4.5V if you are testing connected to USB
 // Defining variables for Hall Effect throttle.
 short hallMeasurement, throttle;
 byte hallCenterMargin = 4;
-int HallMenuMargin  = 50;
+int HallMenuMargin  = 150;
 
 // Defining variables for NRF24 communication
 bool connected = false;
@@ -152,7 +148,7 @@ unsigned long lastSignalBlink;
 unsigned long lastDataRotation;
 
 // Instantiating RF24 object for NRF24 communication
-RF24 radio(7, 8);
+RF24 radio(9, 10);
 
 // Defining variables for Settings menu
 bool changeSettings = false;
@@ -186,14 +182,13 @@ void setup() {
 
   // Start radio communication
   radio.begin();
-  radio.setChannel(radioChannel);
   radio.setPALevel(RF24_PA_MAX);
   radio.enableAckPayload();
   radio.enableDynamicPayloads();
   radio.openWritingPipe(pipe);
 
   #ifdef DEBUG
-    //printf_begin();
+    printf_begin();
     radio.printDetails();
   #endif
 }
@@ -281,7 +276,7 @@ void controlSettingsMenu() {
         settingsLoopFlag = true;
       }
     }
-  } else if (inRange(hallMeasurement, remoteSettings.centerHallValue - HallMenuMargin, remoteSettings.centerHallValue + HallMenuMargin)) {
+  } else if (inRange(hallMeasurement, remoteSettings.centerHallValue - 50, remoteSettings.centerHallValue + 50)) {
     settingsLoopFlag = false;
   }
 }
@@ -389,7 +384,6 @@ int getSettingValue(int index) {
     case 9: value = remoteSettings.centerHallValue; break;
     case 10: value = remoteSettings.maxHallValue;   break;
     case 11: value = remoteSettings.deadzone;       break;
-    case 12: value = remoteSettings.reverseThrottle;break;
   }
   return value;
 }
@@ -409,7 +403,6 @@ void setSettingValue(int index, int value) {
     case 9: remoteSettings.centerHallValue = value; break;
     case 10: remoteSettings.maxHallValue = value;   break;
     case 11: remoteSettings.deadzone = value;       break;
-    case 12: remoteSettings.reverseThrottle = value;break;
   }
 
   sendSettings();
@@ -439,7 +432,12 @@ void transmitToVesc() {
     // Transmit the speed value (0-255).
     remData.packageType = 0; // cmd
     remData.item1 = throttle;
-    remData.item2 = triggerActive();
+    if (remoteSettings.triggerMode == 1) {
+      remData.item2 = triggerActive();
+    }
+    else {
+      remData.item2 = 0;
+    }
     sendSuccess = radio.write(&remData, sizeof(remData));
 
     // Listen for an acknowledgement reponse (return of VESC data).
@@ -491,12 +489,7 @@ void calculateThrottlePosition() {
   }
   hallMeasurement = total / 10;
   
-  if (remoteSettings.reverseThrottle) {
-    hallMeasurement = map(hallMeasurement, remoteSettings.minHallValue, remoteSettings.maxHallValue, remoteSettings.maxHallValue, remoteSettings.minHallValue);
-  }
-  
-  DEBUG_PRINT("hallMeasurement: ");
-  DEBUG_PRINT(hallMeasurement);
+  DEBUG_PRINT( (String)hallMeasurement );
 
   if (hallMeasurement >= remoteSettings.centerHallValue + remoteSettings.deadzone) {
     throttle = constrain(map(hallMeasurement, remoteSettings.centerHallValue + remoteSettings.deadzone, remoteSettings.maxHallValue, 127, 255), 127, 255);
