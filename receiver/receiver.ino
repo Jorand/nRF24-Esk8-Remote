@@ -17,11 +17,16 @@ struct remoteData { //   cmd    | settings
   byte item2;       // Button   |    -
 };
 
-struct settings {
-  bool useUart; // set true to use uart for sending throttle 
-};
+#define CONFIG_VERSION "rx1"
+#define CONFIG_START 32
 
-bool useUartDefault = false;
+struct settings {
+  bool useUart;
+  char version_of_program[4];
+} rxSettings = {
+  true, // set true to use uart for sending throttle
+  CONFIG_VERSION
+};
 
 RF24 radio(9, 10);
 const uint64_t pipe = 0xE8E8F0F0E1LL;
@@ -40,11 +45,8 @@ struct vescValues data;
 unsigned long lastDataCheck;
 
 struct remoteData remData;
-struct settings rxSettings;
 
 void setup() {
-  //setDefaultEEPROMSettings(); // Call this function if you want to reset settings
-  
   SERIALIO.begin(115200);
 
   loadEEPROMSettings();
@@ -147,17 +149,29 @@ void getVescData() {
 }
 
 void setDefaultEEPROMSettings() {
-  rxSettings.useUart = useUartDefault;
-
+  clearEEPROM();
   updateEEPROMSettings();
 }
 
 void loadEEPROMSettings() {
   // Load settings from EEPROM to custom struct
-  EEPROM.get(0, rxSettings);
+  if (EEPROM.read(CONFIG_START + sizeof(settings) - 2) == rxSettings.version_of_program[2] &&
+      EEPROM.read(CONFIG_START + sizeof(settings) - 3) == rxSettings.version_of_program[1] &&
+      EEPROM.read(CONFIG_START + sizeof(settings) - 4) == rxSettings.version_of_program[0])
+  {
+    EEPROM.get(CONFIG_START, rxSettings);
+  } else {
+    setDefaultEEPROMSettings();
+  }
 }
 
 // Write settings to the EEPROM then exiting settings menu.
 void updateEEPROMSettings() {
-  EEPROM.put(0, rxSettings);
+  EEPROM.put(CONFIG_START, rxSettings);
+}
+
+void clearEEPROM() {
+  for (int i = 0 ; i < EEPROM.length() ; i++) {
+    EEPROM.write(i, 0);
+  }
 }

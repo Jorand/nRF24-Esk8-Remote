@@ -72,6 +72,7 @@ struct settings {
   int centerHallValue;
   int maxHallValue;
   int deadzone;
+  char version_of_program[4];
 };
 
 // Defining variables for speed and distance calculation
@@ -113,13 +114,32 @@ int settingRules[numOfSettings][3] {
   {10, 0, 100}   // ex: 50 For joystick with big deadzone 
 };
 
+// LoadAndSaveSettings https://playground.arduino.cc/Code/EEPROMLoadAndSaveSettings
+#define CONFIG_VERSION "tx1" // ID of the settings block - cahnge it if struct change
+#define CONFIG_START 32 // Tell it where to store your config data in EEPROM
+// Default settings
+struct settings remoteSettings = { 
+  1,
+  0,
+  12,
+  14,
+  15,
+  32,
+  80,
+  1,
+  135,
+  504,
+  884,
+  0,
+  CONFIG_VERSION
+};
+bool syncSettings = false;
+
 struct vescValues data;
-struct settings remoteSettings;
 struct remoteData remData;
 
 // Pin defination
 const byte triggerPin = 4;
-//const int chargeMeasurePin = A1; // Not used yet
 const int batteryMeasurePin = A2;
 const int hallSensorPin = A3; // You can use joystick, juste change your min max center throttle value
 
@@ -160,7 +180,6 @@ bool settingsChangeFlag = false;
 bool settingsChangeValueFlag = false;
 
 void setup() {
-  // setDefaultEEPROMSettings(); // Call this function if you want to reset settings
   
   #ifdef DEBUG
     Serial.begin(9600);
@@ -326,17 +345,26 @@ void drawSettingsMenu() {
 }
 
 void setDefaultEEPROMSettings() {
-  for (int i = 0; i < numOfSettings; i++) {
-    setSettingValue(i, settingRules[i][0]);
-  }
-
+  clearEEPROM();
   updateEEPROMSettings();
 }
 
 void loadEEPROMSettings() {
-  // Load settings from EEPROM to custom struct
-  EEPROM.get(0, remoteSettings);
-
+  // To make sure there are settings, and they are YOURS!
+  // If nothing is found it will use the default settings.
+  if (EEPROM.read(CONFIG_START + sizeof(settings) - 2) == remoteSettings.version_of_program[2] &&
+      EEPROM.read(CONFIG_START + sizeof(settings) - 3) == remoteSettings.version_of_program[1] &&
+      EEPROM.read(CONFIG_START + sizeof(settings) - 4) == remoteSettings.version_of_program[0])
+  {
+    // reads settings from EEPROM
+    EEPROM.get(CONFIG_START, remoteSettings);
+    DEBUG_PRINT(F("EEPROM settings found"));
+  } else {
+    DEBUG_PRINT(F("EEPROM settings set Default"));
+    // settings aren't valid! will overwrite with default settings
+    setDefaultEEPROMSettings();
+  }
+  
   bool rewriteSettings = false;
 
   // Loop through all settings to check if everything is fine
@@ -360,8 +388,14 @@ void loadEEPROMSettings() {
 
 // Write settings to the EEPROM then exiting settings menu.
 void updateEEPROMSettings() {
-  EEPROM.put(0, remoteSettings);
+  EEPROM.put(CONFIG_START, remoteSettings);
   calculateRatios();
+}
+
+void clearEEPROM() {
+  for (int i = 0 ; i < EEPROM.length() ; i++) {
+    EEPROM.write(i, 0);
+  }
 }
 
 // Update values used to calculate speed and distance travelled.
