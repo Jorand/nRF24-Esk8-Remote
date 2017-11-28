@@ -90,7 +90,7 @@ String settingPages[numOfSettings][2] = {
   {"Motor pulley",    "T"},
   {"Wheel pulley",    "T"},
   {"Wheel diameter",  "mm"},
-  {"UART data",       ""},
+  {"UART control",       ""},
   {"Throttle min",    ""},
   {"Throttle center", ""},
   {"Throttle max",    ""},
@@ -224,6 +224,10 @@ void loop() {
 
     // Transmit to receiver
     transmitToVesc();
+
+    if (!syncSettings && connected) {
+      sendSettings();
+    }
   }
 
   // Call function to update display and LED
@@ -478,6 +482,7 @@ void sendSettings() {
   // Listen for an acknowledgement reponse (return of VESC data).
   while (radio.isAckPayloadAvailable()) {
     radio.read(&data, sizeof(data));
+    syncSettings = true;
   }
   
 }
