@@ -158,7 +158,7 @@ bool connected = false;
 short failCount;
 int radioChannel = 108; // Above most WiFi frequencies
 
-const uint64_t pipe = 0xE8E8F0F0E1LL; // 0xE8E8F0F0E1LL If you change the pipe, you will need to update it on the receiver to.
+const uint64_t pipe = 0xABCDABCD71LL; // 0xE8E8F0F0E1LL If you change the pipe, you will need to update it on the receiver to.
 unsigned long lastTransmission;
 
 // Defining variables for OLED display
@@ -202,6 +202,7 @@ void setup() {
 
   // Start radio communication
   radio.begin();
+  radio.setChannel(radioChannel);
   radio.setPALevel(RF24_PA_MAX);
   radio.enableAckPayload();
   radio.enableDynamicPayloads();
@@ -245,6 +246,7 @@ void loop() {
     transmitToVesc();
 
     if (!syncSettings && connected) {
+      DEBUG_PRINT(F("syncSettings"));
       sendSettings();
     }
   }
@@ -514,11 +516,12 @@ void sendSettings() {
   radio.write(&remData, sizeof(remData));
 
   // Listen for an acknowledgement reponse (return of VESC data).
-  while (radio.isAckPayloadAvailable()) {
-    radio.read(&data, sizeof(data));
-    syncSettings = true;
-  }
+  //  while (radio.isAckPayloadAvailable()) {
+  //    radio.read(&data, sizeof(data));
+  //    syncSettings = true;
+  //  }
   
+  syncSettings = true;
 }
 
 void calculateThrottlePosition() {

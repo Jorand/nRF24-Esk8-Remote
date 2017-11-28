@@ -29,7 +29,8 @@ struct settings {
 };
 
 RF24 radio(9, 10);
-const uint64_t pipe = 0xE8E8F0F0E1LL;
+int radioChannel = 108; // Above most WiFi frequencies
+const uint64_t pipe = 0xABCDABCD71LL;
 
 bool recievedData = false;
 uint32_t lastTimeReceived = 0;
@@ -52,6 +53,7 @@ void setup() {
   loadEEPROMSettings();
 
   radio.begin();
+  radio.setChannel(radioChannel);
   radio.enableAckPayload();
   radio.enableDynamicPayloads();
   radio.openReadingPipe(1, pipe);
