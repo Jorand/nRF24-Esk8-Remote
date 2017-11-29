@@ -771,7 +771,7 @@ void drawSignal() {
 }
 
 void drawBatteryLevel() {
-  int level = batteryLevel();
+  int level = round5(batteryLevel());
 
   // Position on OLED
   int x = 108; int y = 4;
@@ -786,4 +786,8 @@ void drawBatteryLevel() {
       u8g2.drawBox(x + 4 + (3 * i), y + 2, 2, 5);
     }
   }
+}
+
+int round5(int n) {
+  return (n/5 + (n%5>2)) * 5;
 }
