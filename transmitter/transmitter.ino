@@ -271,7 +271,7 @@ void controlSettingsMenu() {
     settingsChangeFlag = false;
   }
 
-  if (hallMeasurement >= (remoteSettings.maxHallValue - HallMenuMargin) && settingsLoopFlag == false) {
+  if (hallMeasurement >= (remoteSettings.maxHallValue - 150) && settingsLoopFlag == false) {
     // Up
     if (changeSelectedSetting == true) {
       int val = getSettingValue(currentSetting) + 1;
@@ -287,7 +287,7 @@ void controlSettingsMenu() {
       }
     }
   }
-  else if (hallMeasurement <= (remoteSettings.minHallValue + HallMenuMargin) && settingsLoopFlag == false) {
+  else if (hallMeasurement <= (remoteSettings.minHallValue + 150) && settingsLoopFlag == false) {
     // Down
     if (changeSelectedSetting == true) {
       int val = getSettingValue(currentSetting) - 1;
@@ -534,11 +534,12 @@ void calculateThrottlePosition() {
   
   DEBUG_PRINT( (String)hallMeasurement );
 
-  if (hallMeasurement >= remoteSettings.centerHallValue + remoteSettings.deadzone) {
-    throttle = constrain(map(hallMeasurement, remoteSettings.centerHallValue + remoteSettings.deadzone, remoteSettings.maxHallValue, 127, 255), 127, 255);
-  } 
-  else if (hallMeasurement <= remoteSettings.centerHallValue - remoteSettings.deadzone) {
-    throttle = constrain(map(hallMeasurement, remoteSettings.minHallValue, remoteSettings.centerHallValue - remoteSettings.deadzone, 0, 127), 0, 127);
+  DEBUG_PRINT( (String)hallMeasurement );
+  
+  if (hallMeasurement >= remoteSettings.centerHallValue) {
+    throttle = constrain(map(hallMeasurement, remoteSettings.centerHallValue, remoteSettings.maxHallValue, 127, 255), 127, 255);
+  } else {
+    throttle = constrain(map(hallMeasurement, remoteSettings.minHallValue, remoteSettings.centerHallValue, 0, 127), 0, 127);
   }
   else {
     // Default value if stick is in deadzone
